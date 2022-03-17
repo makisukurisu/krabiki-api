@@ -6,9 +6,6 @@ class SocketWorker():
         self.Token = token
         
         self.CurrencyPairs = curr_pairs
-    
-    def getCurrency(self, name):
-        raise NotImplemented()
 
 class KrakenWorker(SocketWorker):
 
@@ -40,11 +37,13 @@ class KrakenWorker(SocketWorker):
             for x in self.CurrencyPairs:
                 if x["name"] == name:
                     return x["name"]
+
         elif name.find("_") > 0:
             tempname = name.replace("_", "", 1)
             for x in self.CurrencyPairs:
                 if x["altname"] == tempname:
                     return x["name"]
+
         else:
             for x in self.CurrencyPairs:
                 if name in [x["name"], x["altname"]]:
@@ -52,23 +51,26 @@ class KrakenWorker(SocketWorker):
     
     def recv_processor(self, recv):
         try:
-            processed = {"Name": recv[-1], "Price": (float(recv[1]["a"][0]) + float(recv[1]["b"][0]))/2, "PID": recv[0]}
-            return processed
+            return {"Name": recv[-1], "Price": (float(recv[1]["a"][0]) + float(recv[1]["b"][0]))/2, "PID": recv[0]}
         except Exception as E:
             raise Exception(E, recv)
     
     async def _get_currency(self, names):
         async with websockets.connect(self.Url) as ws:
-            await ws.send(json.dumps({"event": "subscribe", "pair": names, "subscription": {"name": "ticker"}}))
+            await ws.send(
+                json.dumps(
+                    {
+                        "event": "subscribe", 
+                        "pair": names, 
+                        "subscription": {"name": "ticker"}
+                        }
+                    )
+                )
             con_id = await ws.recv()
             if len(names) == 1:
                 sub_info = json.loads(await ws.recv())
                 if sub_info["event"] == "error":
                     raise Exception("Error from Karken exchange", sub_info)
-
-                showOK = True
-            else:
-                showOK = False
             responses = []
             while True:
                 recv = json.loads(await ws.recv())
@@ -77,9 +79,9 @@ class KrakenWorker(SocketWorker):
                         continue
                 except TypeError:
                     None
-                if recv == {"event": "heartbeat"}:
+                if recv == {"event": "heartbeat"}: #Means there's no more tickers
                     break
-                if recv != None:
+                if recv != None: #None recv's can happen sometimes, probably timeout or something
                     responses.append(self.recv_processor(recv))
             if len(responses) == 1:
                 return responses[0]
@@ -88,13 +90,16 @@ class KrakenWorker(SocketWorker):
 
     def getCurrency(self, name):
         exchange_name = self.getName(name)
+
         if exchange_name == None:
             return Error("Pair not found {}".format(name), name=name, allPairs=self.CurrencyPairs)
+
         result = asyncio.run(self._get_currency([exchange_name]))
         return Response(Pair=result)
     
-    def getAllCurrencies(self):
+    def getAllCurrencies(self):        
         results = asyncio.run(self._get_currency([pair["name"] for pair in self.CurrencyPairs]))
+
         return Response(AllPairs=results)
 
 class BinanceWorker(SocketWorker):
@@ -130,36 +135,48 @@ class BinanceWorker(SocketWorker):
                     return x["name"]
         else:
             for x in self.CurrencyPairs:
-                if x["name"] == name:
+                if name in [x["name"], x["altname"]]:
                     return x["name"]
     
     def recv_processor(self, recv):
         try:
-            processed = {"Name": recv["s"], "Price": (float(recv["b"]) + float(recv["a"]))/2}
-            return processed
+            return {"Name": recv["s"], "Price": (float(recv["b"]) + float(recv["a"]))/2}
         except Exception as E:
             raise Exception(E, recv)
 
     async def _get_currency(self, name):
         async with websockets.connect(self.Url) as ws:
-            await ws.send(json.dumps({"method": "SUBSCRIBE", "params": [name.lower()+"@ticker"], "id": int(datetime.datetime.now().timestamp())}))
+            await ws.send(
+                json.dumps(
+                    {
+                        "method": "SUBSCRIBE", 
+                        "params": [name.lower()+"@ticker"], 
+                        "id": int(datetime.datetime.now().timestamp())
+                        }
+                    )
+                )
             confirmation = await ws.recv()
             ticker = json.loads(await ws.recv())
             return self.recv_processor(ticker)
 
     def getCurrency(self, name):
         exchange_name = self.getName(name)
+
         if exchange_name == None:
             return Error("Pair not found {}".format(name), passed_name=name, allPairs=self.CurrencyPairs)
+
         result = asyncio.run(self._get_currency(exchange_name))
         return Response(Pair=result)
     
     async def _get_all(self):
         async with websockets.connect(self.Url) as ws:
             await ws.send(
-                json.dumps({
-                    "method": "SUBSCRIBE", "params": ["!ticker@arr"], "id": int(datetime.datetime.now().timestamp())
-                })
+                    json.dumps({
+                        "method": "SUBSCRIBE",
+                        "params": ["!ticker@arr"],
+                        "id": int(datetime.datetime.now().timestamp())
+                    }
+                )
             )
             confirmation = await ws.recv()
             tickers = json.loads(await ws.recv())
@@ -190,7 +207,4 @@ class Response(Throwable):
 
     def __init__(self, state="Ok", **kwargs) -> None:
         super().__init__()
-        if state != None:
-            self.msg = {"State": state, "Response": kwargs}
-        else:
-            self.msg = {"Response": kwargs}
+        self.msg = {"State": state, "Response": kwargs}

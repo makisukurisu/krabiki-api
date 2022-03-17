@@ -8,8 +8,8 @@ BW = classes.BinanceWorker()
 exchangeNames = ["kraken", "binance"]
 
 def getPE(request, **kwargs):
-    pair = kwargs["pair"]
-    exchange = kwargs["exchange"]
+    pair = kwargs["pair"].lower()
+    exchange = kwargs["exchange"].lower()
     
     Result = None
 
@@ -27,7 +27,7 @@ def getPE(request, **kwargs):
         return JsonResponse(Result.throw())
 
 def getP(request, **kwargs):
-    pair = kwargs["pair"]
+    pair = kwargs["pair"].lower()
     
     Results = {}
     
@@ -47,16 +47,16 @@ def getP(request, **kwargs):
         )
 
 def getE(request, **kwargs):
-    exchange = kwargs["exchange"]
+    exchange = kwargs["exchange"].lower()
     
     if exchange not in exchangeNames:
         return JsonResponse(
             classes.Error("Invalid exchange name: {}, acceptable: {}".format(exchange, exchangeNames), accepting=exchangeNames).throw()
             )
 
-    if exchange.lower() == "kraken":
+    if exchange == "kraken":
         Result = KW.getAllCurrencies()
-    if exchange.lower() == "binance":
+    if exchange == "binance":
         Result = BW.getAllCurrencies()
     
     return JsonResponse(Result.throw())
