@@ -1,10 +1,10 @@
 Как запустить:
 
-    1. Построить код:
-        *docker build --tag krbiapi .*
-    
-    2. Запустить контейнер:
-        *docker run --publish 8000:8000 krbiapi:latest*
+1. Построить код:
+    *docker build --tag krbiapi .*
+
+2. Запустить контейнер:
+    *docker run --publish 8000:8000 krbiapi:latest*
 
 **Помощь по использованию/Документация**
 
