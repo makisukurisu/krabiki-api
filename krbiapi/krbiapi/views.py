@@ -8,7 +8,7 @@ BW = classes.BinanceWorker()
 exchangeNames = ["kraken", "binance"]
 
 def getPE(request, **kwargs):
-    pair = kwargs["pair"].lower()
+    pair = kwargs["pair"].upper()
     exchange = kwargs["exchange"].lower()
     
     Result = None
@@ -27,7 +27,7 @@ def getPE(request, **kwargs):
         return JsonResponse(Result.throw())
 
 def getP(request, **kwargs):
-    pair = kwargs["pair"].lower()
+    pair = kwargs["pair"].upper()
     
     Results = {}
     
@@ -36,7 +36,7 @@ def getP(request, **kwargs):
 
     if isinstance(Results["kraken"], classes.Error) and isinstance(Results["binance"], classes.Error):
         return JsonResponse(
-            classes.Error("Error with both exchanges", krakenError=Results["kraken"], binanceError=Results["binance"]).throw()
+            classes.Error("Error with both exchanges", krakenError=Results["kraken"].throw(), binanceError=Results["binance"].throw()).throw()
             )
     else:
         ResultsValues = {}
